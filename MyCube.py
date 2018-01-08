@@ -3,6 +3,7 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
+
 class MyCube:
     def __init__(self, length=5):
         self.logger = logging.getLogger(__name__)
@@ -11,7 +12,8 @@ class MyCube:
         self.size= math.pow(length, 3)
         self.no_gaps = self.size
         self._occupied_locations = []
-        self._shape = None
+        self._shape_orientations_rot = []
+        self._shape_orientations_points = []
         self.no_solutions = 0
         self.solutions = []
         self.no_placed_shapes = 0
@@ -31,72 +33,91 @@ class MyCube:
             self.solutions = []
             self.no_placed_shapes = 0
             self.place_attempt = 0
-            self._shape = shape
+            self._generate_shape_orientations(shape)
             self._fill_cube()
 
             return self.no_solutions, self.solutions
 
-    def _fill_cube(self, current_gape=[0,0,0], occupied_locations=[], shapes_locations = []):
+    def _generate_shape_orientations(self, shape):
         """
+        Generate the 24 possible shape orientations
+        :return:
         """
-        solution_found = False
-        #print("Current gape: {}".format(current_gape))
-
         for rot_x in Space.ROTATIONS:
             for rot_y in Space.ROTATIONS:
                 for rot_z in Space.ROTATIONS:
-                    self.place_attempt += 1
-
-                    # Check if there is enough space to potentially place the shape
-                    size_x = self.length - current_gape[0]
-                    size_y = self.length - current_gape[1]
-                    size_z = self.length - current_gape[2]
-
-
-                    shape_points = Space.rotate_points_x_axis(self._shape.points, rot_x, reset_origin=True)
+                    shape_points = Space.rotate_points_x_axis(shape.points, rot_x, reset_origin=True)
                     shape_points = Space.rotate_points_y_axis(shape_points, rot_y, reset_origin=True)
                     shape_points = Space.rotate_points_z_axis(shape_points, rot_z, reset_origin=True)
-                    # Get the positions that should be occupied by the shape
-                    shape_points = Space.reset_origin(shape_points, offset=current_gape)
-                    shape_can_be_placed = True
-                    # Check if it possible to place the shape in current position and orientation
-                    for point in shape_points:
-                        if point in occupied_locations:
-                            shape_can_be_placed = False
-                            break
-                        if point[0] >= self.length or point[1] >= self.length or point[2] >= self.length:
-                            shape_can_be_placed = False
-                            break
+                    orientation_considered = False
+                    for existing_orientation in self._shape_orientations_points:
+                        if all(point in existing_orientation for point in shape_points):
+                            orientation_considered = True
+                    if not orientation_considered:
+                        self._shape_orientations_points.append(shape_points)
+                        self._shape_orientations_rot.append([rot_x, rot_y, rot_z])
 
-                    if shape_can_be_placed:
-                        self.no_placed_shapes += 1
-                        # Mark the positions as occupied and save shape position and orientation
-                        no_points_added = len(shape_points)
-                        occupied_locations = occupied_locations + shape_points
-                        shapes_locations.append([current_gape, rot_x, rot_y, rot_z])
+    def _fill_cube(self, current_gape=[0, 0, 0], occupied_locations=[], shapes_locations=[]):
+        """
+        """
+        solution_found = False
 
-                        self.logger.info("Attempt [{}]: No of placed shapes {}".format(self.place_attempt, self.no_placed_shapes))
-                        self.logger.debug("Place shape at (x,y,z): {}".format(current_gape))
-                        self.logger.debug("Rotation on X,Y,Z axis: {} {} {}".format(rot_x, rot_y, rot_z))
+        for index in range(len(self._shape_orientations_points)):
+            shape_points = self._shape_orientations_points[index]
 
-                        # Check if the cube is full
-                        if len(occupied_locations) == self.size:
-                            self.solutions = shapes_locations
-                            self.no_solutions += 1
-                            return True
+            self.place_attempt += 1
+            if self.place_attempt % 10000 == 0:
+                self.logger.info("Attempt [{}]: No of placed shapes {}".format(self.place_attempt, self.no_placed_shapes))
 
-                        next_gape = self._get_next_location(current_gape)
-                        # Recurse to place more shapes
-                        solution_found = self._fill_cube(next_gape, occupied_locations, shapes_locations)
+            for shift_x in range(self.length):
+                origin_offset_x = current_gape[0] - shift_x
+                if origin_offset_x < 0:
+                    break
+                origin_offset = [origin_offset_x, current_gape[1], current_gape[2]]
+                # Get the positions that should be occupied by the shape
+                shape_points_shifted = Space.reset_origin(shape_points, offset=origin_offset)
+                shape_can_be_placed = True
+                # Check if it possible to place the shape in current position and orientation
+                for point in shape_points_shifted:
+                    if point in occupied_locations:
+                        shape_can_be_placed = False
+                        break
+                    if point[0] >= self.length or point[1] >= self.length or point[2] >= self.length:
+                        shape_can_be_placed = False
+                        break
 
-                        if solution_found:
-                            return True
+                if shape_can_be_placed:
+                    self.no_placed_shapes += 1
+                    # Mark the positions as occupied and save shape position and orientation
+                    no_points_added = len(shape_points_shifted)
+                    occupied_locations = occupied_locations + shape_points_shifted
+                    rot_x, rot_y, rot_z = self._shape_orientations_rot[index]
+                    shapes_locations.append([current_gape, rot_x, rot_y, rot_z])
 
-                        # Remove the currently added shape and try another rotation
-                        for i in range(no_points_added):
-                            del occupied_locations[-1]
-                        del shapes_locations[-1]
-                        self.no_placed_shapes -= 1
+                    self.logger.debug("Place shape at (x,y,z): {}".format(current_gape))
+                    self.logger.debug("Rotation on X,Y,Z axis: {} {} {}".format(rot_x, rot_y, rot_z))
+
+                    # Check if the cube is full
+                    if len(occupied_locations) == self.size:
+                        self.solutions = shapes_locations
+                        self.no_solutions += 1
+                        return True
+
+                    # Go to the next gape
+                    next_gape = current_gape
+                    while next_gape in occupied_locations:
+                        next_gape = self._get_next_location(next_gape)
+                    # Recurse to place more shapes
+                    solution_found = self._fill_cube(next_gape, occupied_locations, shapes_locations)
+
+                    if solution_found:
+                        return True
+
+                    # Remove the currently added shape and try another rotation
+                    for i in range(no_points_added):
+                        del occupied_locations[-1]
+                    del shapes_locations[-1]
+                    self.no_placed_shapes -= 1
 
         return solution_found
 
@@ -374,10 +395,19 @@ class Space:
 
         return [min_x, max_x, min_y, max_y, min_z, max_z]
 
+    @staticmethod
+    def size(points):
+        [min_x, max_x, min_y, max_y, min_z, max_z] = Space.min_max(points)
+        length_x = max_x - min_x
+        length_y = max_y - min_y
+        length_z = max_z - min_z
+
+        return [length_x, length_y, length_z]
+
 
 if __name__ == '__main__':
 
-    if 1:
+    if 0:
         my_cube = MyCube(length=4)
         my_points = [
             [0, 0, 0],

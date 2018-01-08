@@ -40,6 +40,20 @@ class MyCubeTestCase(unittest.TestCase):
             my_loc = my_cube._get_next_location(my_loc)
         self.assertEqual(my_loc, [2, 2, 2])
 
+    def test_generate_shape_orientations(self):
+        my_cube = MyCube(length=3)
+        my_shape = Shape(MY_SHAPE_001)
+        my_cube._generate_shape_orientations(my_shape)
+
+        self.assertEqual(len(my_cube._shape_orientations_points), 24, "There should be 24 possible orientations")
+        self.assertEqual(len(my_cube._shape_orientations_rot), 24, "There should be 24 possible orientations")
+
+    def test_generate_shape_orientations_symmetric_shape(self):
+        my_cube = MyCube(length=2)
+        my_cube._generate_shape_orientations(Shape.from_size(1, 1, 2))
+        self.assertEqual(len(my_cube._shape_orientations_points), 3, "There should be 3 possible orientations")
+        self.assertEqual(len(my_cube._shape_orientations_rot), 3, "There should be 3 possible orientations")
+
     def test_solve_shape_size_doesnt_fit(self):
         my_cube = MyCube(length=5)
         my_shape = Shape.from_size(1, 1, 2)
@@ -66,6 +80,7 @@ class MyCubeTestCase(unittest.TestCase):
         ]
         my_shape = Shape(my_points)
         number_solutions, solutions = my_cube.solve(my_shape)
+        print("Total attempts: {}".format(my_cube.place_attempt))
         self.assertEqual(number_solutions, 1, "Solution found")
 
     def test_solve_5by5_cube(self):
@@ -73,6 +88,7 @@ class MyCubeTestCase(unittest.TestCase):
         my_shape = Shape(MY_SHAPE_001)
         number_solutions, solutions = my_cube.solve(my_shape)
         self.assertEqual(number_solutions, 1, "Solution found")
+
 
 class MyPieceTestCase(unittest.TestCase):
     def test_class_exists(self):
@@ -130,6 +146,7 @@ class SpaceTestCase(unittest.TestCase):
         my_new_points = [[1, 0, 0],
                          [0, 0, 0]]
         self.assertEqual(Space.reset_origin(my_points), my_new_points)
+        self.assertEqual(my_points, [[0, 0, 0], [-1, 0, 0]])
 
     def test_rotate_points_x_axis(self):
         my_exp_points = [[0, 0, 1],
