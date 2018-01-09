@@ -1,5 +1,6 @@
 import math
 import logging
+from random import sample
 
 logging.basicConfig(level=logging.INFO)
 
@@ -62,11 +63,12 @@ class MyCube:
         """
         solution_found = False
 
-        for index in range(len(self._shape_orientations_points)):
+        no_orientations = len(self._shape_orientations_points)
+        for index in sample(range(no_orientations), no_orientations):
             shape_points = self._shape_orientations_points[index]
 
             self.place_attempt += 1
-            if self.place_attempt % 10000 == 0:
+            if self.place_attempt % 100000 == 0:
                 self.logger.info("Attempt [{}]: No of placed shapes {}".format(self.place_attempt, self.no_placed_shapes))
 
             for shift_x in range(self.length):
