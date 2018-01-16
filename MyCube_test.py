@@ -1,5 +1,5 @@
 import unittest
-from MyCube.MyCube import *
+from MyCube import *
 
 
 MY_SHAPE_001 = [[0, 0, 0],
@@ -83,6 +83,7 @@ class MyCubeTestCase(unittest.TestCase):
         print("Total attempts: {}".format(my_cube.place_attempt))
         self.assertEqual(number_solutions, 1, "Solution found")
 
+    @unittest.skip("takes too much time!")
     def test_solve_5by5_cube(self):
         my_cube = MyCube(length=5)
         my_shape = Shape(MY_SHAPE_001)
