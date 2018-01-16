@@ -1,0 +1,2 @@
+
+image:https://travis-ci.org/cuinixam/polycube_puzzle.svg?branch=master["Build Status", link="https://travis-ci.org/cuinixam/polycube_puzzle"]
